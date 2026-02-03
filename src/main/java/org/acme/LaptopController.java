@@ -56,7 +56,10 @@ public class LaptopController {
 		if(laptop.isPresent()) {
 			return Response.ok(laptop.get()).build();
 		}else {
-			return Response.status(Response.Status.BAD_REQUEST).build();
+			//return Response.status(Response.Status.BAD_REQUEST).build();
+			//return Response.noContent().build();
+			//return Response.ok("content message").build();
+			return Response.status(Response.Status.BAD_REQUEST).entity("Laptop with id "+id+" not found").build();
 		}
 	}
 	
