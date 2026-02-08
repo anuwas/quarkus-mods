@@ -1,0 +1,12 @@
+Aadhar and Citizen is one to one relationship. One citizen can have only one Aadhar.
+Or any aadhar number uniquely identify a unique citizen.
+
+One to One relationship is flexible. The mapping can be declary in any of the class
+because it is a bidirectional relationship. Here we are going to declare Citizent is the
+main table, so inside Aadhar table we are going to create reference of Citizen table.
+
+We are not declering any dependency inside Citizen table.
+
+We can create seperate object of Aadhar and Citizen and then can save separately.
+
+

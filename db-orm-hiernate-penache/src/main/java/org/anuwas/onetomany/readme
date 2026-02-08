@@ -1,0 +1,6 @@
+Here we have one to many relationshi betwwen Resident and Simcard.One resident can have
+multiple simcards, on the other hand one simcard can be used by only one resident.
+
+So from Resident ot Simcar -> One to Many relationship
+From Simcard to Resident -> Many to One relationship
+
