@@ -1,0 +1,6 @@
+package com.demo.batch.exception;
+
+public class BatchWriteException extends RuntimeException {
+    public BatchWriteException(String message) { super(message); }
+    public BatchWriteException(String message, Throwable cause) { super(message, cause); }
+}
