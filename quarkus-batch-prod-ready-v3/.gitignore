@@ -1,0 +1,11 @@
+target/
+.mvn/
+*.class
+*.jar
+!*-runner.jar
+.idea/
+*.iml
+.DS_Store
+*.log
+.env
+*.swp

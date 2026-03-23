@@ -1,0 +1,74 @@
+version: '3.8'
+
+# ================================================================
+# Docker Compose — Quarkus Production Batch Processor
+# stgdb  : source PostgreSQL  (port 5432)
+# maindb : target PostgreSQL  (port 5433)
+# app    : Quarkus application (port 8080)
+# ================================================================
+
+services:
+
+  stgdb:
+    image: postgres:16-alpine
+    container_name: batch-stgdb
+    environment:
+      POSTGRES_DB:       stgdb
+      POSTGRES_USER:     stg_user
+      POSTGRES_PASSWORD: stg_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - stgdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stg_user -d stgdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  maindb:
+    image: postgres:16-alpine
+    container_name: batch-maindb
+    environment:
+      POSTGRES_DB:       maindb
+      POSTGRES_USER:     main_user
+      POSTGRES_PASSWORD: main_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - maindb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U main_user -d maindb"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: batch-app
+    depends_on:
+      stgdb:  { condition: service_healthy }
+      maindb: { condition: service_healthy }
+    environment:
+      STG_DB_URL:             jdbc:postgresql://stgdb:5432/stgdb
+      STG_DB_USER:            stg_user
+      STG_DB_PASSWORD:        stg_pass
+      MAIN_DB_URL:            jdbc:postgresql://maindb:5432/maindb
+      MAIN_DB_USER:           main_user
+      MAIN_DB_PASSWORD:       main_pass
+      BATCH_CHUNK_SIZE:       "500"
+      BATCH_CRON:             "0/30 * * * * ?"
+      BATCH_SCHEDULE_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  stgdb_data:
+  maindb_data:

@@ -1,0 +1,38 @@
+####
+# JVM Dockerfile for Quarkus Production Batch Processor
+# Build : docker build -f src/main/docker/Dockerfile.jvm -t quarkus-batch-prod .
+# Run   : docker run -i --rm -p 8080:8080 quarkus-batch-prod
+####
+
+FROM eclipse-temurin:21-jre-jammy
+
+ENV LANGUAGE='en_US:en'
+
+# Install curl for health-check probe
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user
+RUN groupadd --gid 1000 quarkus \
+    && useradd --uid 1000 --gid quarkus --shell /bin/bash --create-home quarkus
+
+WORKDIR /deployments
+
+COPY --chown=quarkus:quarkus target/quarkus-app/lib/       /deployments/lib/
+COPY --chown=quarkus:quarkus target/quarkus-app/*.jar       /deployments/
+COPY --chown=quarkus:quarkus target/quarkus-app/app/        /deployments/app/
+COPY --chown=quarkus:quarkus target/quarkus-app/quarkus/    /deployments/quarkus/
+
+USER quarkus
+EXPOSE 8080
+
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 \
+    -Djava.util.logging.manager=org.jboss.logmanager.LogManager \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    -XX:InitialRAMPercentage=50 \
+    -XX:MaxRAMPercentage=75"
+
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS_APPEND -jar $JAVA_APP_JAR"]
