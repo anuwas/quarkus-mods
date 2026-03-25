@@ -1,6 +1,7 @@
 package com.example.batch.scheduler;
 
 import com.example.batch.config.BatchProperties;
+import com.example.batch.dto.BatchResult;
 import com.example.batch.service.BatchProcessingService;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
@@ -45,7 +46,7 @@ public class BatchScheduler {
         Log.debugf("Batch scheduler fired at %s.", execution.getFireTime());
 
         try {
-            BatchProcessingService.BatchResult result = batchService.processNextChunk();
+            BatchResult result = batchService.processNextChunk();
 
             switch (result.outcome()) {
                 case "COMPLETED", "COMPLETED_WITH_ERRORS" ->

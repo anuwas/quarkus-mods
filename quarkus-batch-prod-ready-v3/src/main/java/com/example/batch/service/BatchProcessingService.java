@@ -1,6 +1,8 @@
 package com.example.batch.service;
 
 import com.example.batch.config.BatchProperties;
+import com.example.batch.dto.BatchResult;
+import com.example.batch.dto.ChunkResult;
 import com.example.batch.entity.stg.StagingSynchLog;
 import com.example.batch.repository.main.ProductRepository;
 import com.example.batch.repository.main.BatchExecutionLogRepository;
@@ -121,7 +123,7 @@ public class BatchProcessingService {
 
         try {
             // ── Phase 2: PROCESS (in-memory) ──────────────────────────────
-            ChunkAggregator.ChunkResult result =  aggregator.process(claimed, batchId, node);
+            ChunkResult result =  aggregator.process(claimed, batchId, node);
 
             // ── Phase 3: COMMIT ───────────────────────────────────────────
             commitChunk(result);
@@ -174,7 +176,7 @@ public class BatchProcessingService {
      * be recovered via the admin reset endpoint.  The mainDB upsert is
      * idempotent, so a retry is safe.
      */
-    protected void commitChunk(ChunkAggregator.ChunkResult result) {
+    protected void commitChunk(ChunkResult result) {
         // 3a — write aggregated results to mainDB (own transaction)
         commitToMainDb(result);
 
@@ -183,14 +185,14 @@ public class BatchProcessingService {
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    protected void commitToMainDb(ChunkAggregator.ChunkResult result) {
+    protected void commitToMainDb(ChunkResult result) {
         if (!result.aggregated().isEmpty()) {
             productRepo.upsertAll(result.aggregated());
         }
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    protected void commitToStgDb(ChunkAggregator.ChunkResult result) {
+    protected void commitToStgDb(ChunkResult result) {
         stagingRepo.markCompletedBulk(result.successIds());
         stagingRepo.markFailedBulk(result.failedIds());
     }
@@ -229,35 +231,4 @@ public class BatchProcessingService {
         return nodeId;
     }
 
-    // -----------------------------------------------------------------------
-    // Result record
-    // -----------------------------------------------------------------------
-
-    /**
-     * Immutable result of a single chunk execution.
-     */
-    public record BatchResult(
-        String  batchId,
-        String  nodeId,
-        String  outcome,       // COMPLETED | COMPLETED_WITH_ERRORS | EMPTY | FAILED | SKIPPED
-        int     totalRead,
-        int     totalOk,
-        int     totalFailed,
-        long    durationMs,
-        String  errorMessage
-    ) {
-        static BatchResult completed(String b, String n, int read, int ok, int failed, long ms) {
-            String status = failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED";
-            return new BatchResult(b, n, status, read, ok, failed, ms, null);
-        }
-        static BatchResult empty(String b, String n) {
-            return new BatchResult(b, n, "EMPTY", 0, 0, 0, 0, null);
-        }
-        static BatchResult failed(String b, String n, int read, String err) {
-            return new BatchResult(b, n, "FAILED", read, 0, read, 0, err);
-        }
-        static BatchResult skipped(String n) {
-            return new BatchResult(null, n, "SKIPPED", 0, 0, 0, 0, "Already executing");
-        }
-    }
 }

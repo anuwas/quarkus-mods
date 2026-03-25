@@ -64,10 +64,10 @@ always claim *different, non-overlapping* sets of records with zero contention o
      staging_synch_log                 product
      • status: PENDING                 • per (date,product,region)
      •         PROCESSING              • total_quantity
-     •         COMPLETED               • total_revenue
-     •         FAILED                  • avg/min/max price
+     •         COMPLETED               • transaction_count
+     •         FAILED                  • table_reference (varchar)
      • node_id (which node owns it)    batch_execution_log
-     • error_message                   • per-run audit record
+     • table_reference                 • per-run audit record
 ```
 
 ---

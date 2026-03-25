@@ -1,5 +1,6 @@
 package com.example.batch.service;
 
+import com.example.batch.dto.ChunkResult;
 import com.example.batch.entity.main.Product;
 import com.example.batch.entity.stg.StagingSynchLog;
 import com.example.batch.exception.RecordValidationException;
@@ -14,10 +15,10 @@ import java.util.*;
  *
  * Validation rules applied per record:
  *   - tableName must be non-blank
- *   - quantity must be > 0
+ *   - tableReference must be non-blank
  *
  * Aggregation key: tableName
- * Per-group metrics: totalQuantity, transactionCount
+ * Per-group metrics: transactionCount
  *
  * This class is intentionally free of @Transactional — it performs pure in-memory
  * computation and does not touch the database.
@@ -25,18 +26,6 @@ import java.util.*;
 @ApplicationScoped
 public class ChunkAggregator {
 
-    /**
-     * Result of processing one chunk.
-     *
-     * @param aggregated   Product objects ready for upsert into mainDB
-     * @param successIds   IDs of StagingSynchLogs that passed validation
-     * @param failedIds    IDs that failed validation, with their error messages
-     */
-    public record ChunkResult(
-        List<Product> aggregated,
-        List<Long>             successIds,
-        Map<Long, String>      failedIds
-    ) {}
 
     // -----------------------------------------------------------------------
     // Core method
@@ -93,8 +82,8 @@ public class ChunkAggregator {
         List<String> errors = new ArrayList<>();
 
         if (isBlank(r.tableName))   errors.add("tableName is blank");
-        if (r.quantity == null || r.quantity <= 0)
-            errors.add("quantity must be > 0 (got: " + r.quantity + ")");
+        if (isBlank(r.tableReference))
+            errors.add("tableReference is blank");
 
         if (!errors.isEmpty()) {
             throw new RecordValidationException( "Record id=" + r.id + " failed validation: " + String.join("; ", errors));
@@ -116,7 +105,6 @@ public class ChunkAggregator {
     }
 
     private void accumulate(Product agg, StagingSynchLog r) {
-        agg.totalQuantity      += r.quantity;
         agg.transactionCount   += 1;
     }
 

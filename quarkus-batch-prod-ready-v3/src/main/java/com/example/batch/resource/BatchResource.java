@@ -2,6 +2,7 @@ package com.example.batch.resource;
 
 import com.example.batch.config.BatchProperties;
 import com.example.batch.config.RecordStatus;
+import com.example.batch.dto.BatchResult;
 import com.example.batch.repository.main.BatchExecutionLogRepository;
 import com.example.batch.repository.main.ProductRepository;
 import com.example.batch.repository.stg.StagingSynchLogRepository;
@@ -56,7 +57,7 @@ public class BatchResource {
     public Response trigger() {
         Log.infof("Manual batch trigger received.");
         try {
-            BatchProcessingService.BatchResult result = batchService.processNextChunk();
+            BatchResult result = batchService.processNextChunk();
             return Response.ok(resultToMap(result)).build();
         } catch (Exception e) {
             Log.errorf(e, "Manual trigger failed: %s", e.getMessage());
@@ -145,7 +146,7 @@ public class BatchResource {
     // Private helpers
     // -----------------------------------------------------------------------
 
-    private Map<String, Object> resultToMap(BatchProcessingService.BatchResult r) {
+    private Map<String, Object> resultToMap(BatchResult r) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("batchId",      r.batchId());
         m.put("nodeId",       r.nodeId());

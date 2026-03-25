@@ -4,7 +4,6 @@ import com.example.batch.config.RecordStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDateTime;
 
@@ -45,10 +44,9 @@ public class StagingSynchLog {
     @Column(name = "table_name", nullable = false, length = 200)
     public String tableName;
 
-    @Positive
-    @NotNull
-    @Column(name = "quantity", nullable = false)
-    public Integer quantity;
+    @NotBlank
+    @Column(name = "table_reference", nullable = false, length = 255)
+    public String tableReference;
 
 
     @Column(name = "notes", length = 500)
