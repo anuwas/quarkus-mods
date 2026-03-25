@@ -1,21 +1,23 @@
 package com.example.batch.repository.main;
 
 import com.example.batch.entity.main.BatchExecutionLog;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository for BatchExecutionLog — audit trail of every batch run.
  */
 @ApplicationScoped
-public class BatchExecutionLogRepository {
+public class BatchExecutionLogRepository implements PanacheRepositoryBase<BatchExecutionLog, Long> {
 
     @Inject
-    @io.quarkus.hibernate.orm.PersistenceUnit("maindb")
     EntityManager em;
 
     /**
@@ -31,7 +33,7 @@ public class BatchExecutionLogRepository {
         log.chunkSize  = chunkSize;
         log.status     = "STARTED";
         log.startedAt  = LocalDateTime.now();
-        log.persist();
+        persist(log);
         return log;
     }
 
@@ -43,7 +45,7 @@ public class BatchExecutionLogRepository {
     public void completeLog(String batchId, String status,
                              long read, long ok, long failed,
                              long durationMs, String errorSummary) {
-        BatchExecutionLog.findByBatchId(batchId).ifPresent(log -> {
+        findByBatchId(batchId).ifPresent(log -> {
             log.status       = status;
             log.recordsRead  = read;
             log.recordsOk    = ok;
@@ -55,5 +57,17 @@ public class BatchExecutionLogRepository {
                 log.throughputRps = (ok * 1000.0) / durationMs;
             }
         });
+    }
+
+    // -----------------------------------------------------------------------
+    // Queries
+    // -----------------------------------------------------------------------
+
+    public Optional<BatchExecutionLog> findByBatchId(String batchId) {
+        return find("batchId", batchId).firstResultOptional();
+    }
+
+    public List<BatchExecutionLog> findRecent(int limit) {
+        return find("ORDER BY startedAt DESC").page(0, limit).list();
     }
 }

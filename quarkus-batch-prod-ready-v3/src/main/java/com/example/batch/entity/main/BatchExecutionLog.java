@@ -1,11 +1,8 @@
 package com.example.batch.entity.main;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Audit log for every batch execution — one row per scheduled run.
@@ -21,7 +18,7 @@ import java.util.Optional;
         @Index(name = "idx_bel_node_id",     columnList = "node_id")
     }
 )
-public class BatchExecutionLog extends PanacheEntityBase {
+public class BatchExecutionLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "bel_seq")
@@ -69,15 +66,4 @@ public class BatchExecutionLog extends PanacheEntityBase {
         if (startedAt == null) startedAt = LocalDateTime.now();
     }
 
-    // -----------------------------------------------------------------------
-    // Queries
-    // -----------------------------------------------------------------------
-
-    public static Optional<BatchExecutionLog> findByBatchId(String batchId) {
-        return find("batchId", batchId).firstResultOptional();
-    }
-
-    public static List<BatchExecutionLog> findRecent(int limit) {
-        return find("ORDER BY startedAt DESC").page(0, limit).list();
-    }
 }

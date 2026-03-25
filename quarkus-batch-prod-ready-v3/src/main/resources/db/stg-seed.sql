@@ -2,7 +2,7 @@
 -- STG seed data — 30 representative PENDING records for demo / testing
 -- =====================================================================
 INSERT INTO public.staging_synch_log
-(id, product_name, quantity, status, created_at, updated_at, retry_count, processed_at, node_id, notes, error_message)
+(id, table_name, quantity, status, created_at, updated_at, retry_count, processed_at, node_id, notes, error_message)
 VALUES
     (1, 'Laptop Pro 15', 2, 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
     (2, 'Wireless Mouse', 5, 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),

@@ -1,8 +1,6 @@
 package com.example.batch.entity.stg;
 
 import com.example.batch.config.RecordStatus;
-import io.quarkus.hibernate.orm.PersistenceUnit;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,7 +18,7 @@ import java.time.LocalDateTime;
  *   (status, created_at) — for monitoring / ops queries
  *
  * NOTE: This entity lives in the "stgdb" persistence unit only.
- *       Never inject the maindb EntityManager here.
+ *       Never inject the default (main) EntityManager here.
  */
 @Entity
 @Table(
@@ -30,7 +28,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_stg_status_created_at", columnList = "status, created_at")
     }
 )
-public class StagingSynchLog extends PanacheEntityBase {
+public class StagingSynchLog {
 
 
     @Id
@@ -44,8 +42,8 @@ public class StagingSynchLog extends PanacheEntityBase {
 
 
     @NotBlank
-    @Column(name = "product_name", nullable = false, length = 200)
-    public String productName;
+    @Column(name = "table_name", nullable = false, length = 200)
+    public String tableName;
 
     @Positive
     @NotNull
@@ -105,6 +103,6 @@ public class StagingSynchLog extends PanacheEntityBase {
 
     @Override
     public String toString() {
-        return "StagingSynchLog{id=%d, product='%s', status=%s}".formatted(id, productName, status);
+        return "StagingSynchLog{id=%d, table='%s', status=%s}".formatted(id, tableName, status);
     }
 }

@@ -2,8 +2,8 @@ package com.example.batch.resource;
 
 import com.example.batch.config.BatchProperties;
 import com.example.batch.config.RecordStatus;
-import com.example.batch.entity.main.Product;
-import com.example.batch.entity.main.BatchExecutionLog;
+import com.example.batch.repository.main.BatchExecutionLogRepository;
+import com.example.batch.repository.main.ProductRepository;
 import com.example.batch.repository.stg.StagingSynchLogRepository;
 import com.example.batch.service.BatchProcessingService;
 import io.quarkus.logging.Log;
@@ -36,9 +36,11 @@ import java.util.Map;
 @Tag(name = "Batch Processor", description = "Trigger, monitor, and manage the batch pipeline")
 public class BatchResource {
 
-    @Inject BatchProcessingService  batchService;
-    @Inject StagingSynchLogRepository stagingRepo;
-    @Inject BatchProperties         props;
+    @Inject BatchProcessingService      batchService;
+    @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository   stagingRepo;
+    @Inject ProductRepository           productRepo;
+    @Inject BatchExecutionLogRepository logRepo;
+    @Inject BatchProperties             props;
 
     // -----------------------------------------------------------------------
     // Trigger
@@ -81,8 +83,8 @@ public class BatchResource {
         s.put("stg.processing", stagingRepo.countByStatus(RecordStatus.PROCESSING));
         s.put("stg.completed",  stagingRepo.countByStatus(RecordStatus.COMPLETED));
         s.put("stg.failed",     stagingRepo.countByStatus(RecordStatus.FAILED));
-        s.put("main.results",   Product.count());
-        s.put("main.execLogs",  BatchExecutionLog.count());
+        s.put("main.results",   productRepo.count());
+        s.put("main.execLogs",  logRepo.count());
         return Response.ok(s).build();
     }
 
@@ -95,14 +97,14 @@ public class BatchResource {
     @Operation(summary = "Recent batch execution logs")
     public Response executions(@QueryParam("limit") @DefaultValue("20")
                                @Min(1) @Max(200) int limit) {
-        return Response.ok(BatchExecutionLog.findRecent(limit)).build();
+        return Response.ok(logRepo.findRecent(limit)).build();
     }
 
     @GET
     @Path("/executions/{batchId}")
     @Operation(summary = "Single batch execution detail")
     public Response execution(@PathParam("batchId") String batchId) {
-        return BatchExecutionLog.findByBatchId(batchId)
+        return logRepo.findByBatchId(batchId)
                 .map(log -> Response.ok(log).build())
                 .orElse(Response.status(Response.Status.NOT_FOUND)
                         .entity(Map.of("error", "Not found: " + batchId)).build());
@@ -117,7 +119,7 @@ public class BatchResource {
     @Operation(summary = "Aggregated results from mainDB")
     public Response results(
             @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(1000) int limit) {
-        return Response.ok(Product.listAll().stream().limit(limit).toList()).build();
+        return Response.ok(productRepo.listAll().stream().limit(limit).toList()).build();
     }
 
     // -----------------------------------------------------------------------

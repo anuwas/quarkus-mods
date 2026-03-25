@@ -13,10 +13,10 @@ import java.util.*;
  * into a list of Product objects.
  *
  * Validation rules applied per record:
- *   - productName must be non-blank
+ *   - tableName must be non-blank
  *   - quantity must be > 0
  *
- * Aggregation key: productName
+ * Aggregation key: tableName
  * Per-group metrics: totalQuantity, transactionCount
  *
  * This class is intentionally free of @Transactional — it performs pure in-memory
@@ -58,7 +58,7 @@ public class ChunkAggregator {
         for (StagingSynchLog record : records) {
             try {
                 validate(record);
-                String key = record.productName;
+                String key = record.tableName;
 
                 Product agg = aggregationMap.computeIfAbsent(key, k -> newResult(k, batchId, nodeId));
 
@@ -92,7 +92,7 @@ public class ChunkAggregator {
     private void validate(StagingSynchLog r) {
         List<String> errors = new ArrayList<>();
 
-        if (isBlank(r.productName))   errors.add("productName is blank");
+        if (isBlank(r.tableName))   errors.add("tableName is blank");
         if (r.quantity == null || r.quantity <= 0)
             errors.add("quantity must be > 0 (got: " + r.quantity + ")");
 
@@ -105,9 +105,9 @@ public class ChunkAggregator {
     // Aggregation helpers
     // -----------------------------------------------------------------------
 
-    private Product newResult(String productName, String batchId, String nodeId) {
+    private Product newResult(String tableName, String batchId, String nodeId) {
         Product a = new Product();
-        a.productName         = productName;
+        a.tableName           = tableName;
         a.totalQuantity       = 0L;
         a.transactionCount    = 0L;
         a.batchId             = batchId;

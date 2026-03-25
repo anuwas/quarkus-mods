@@ -2,6 +2,7 @@ package com.example.batch.repository.stg;
 
 import com.example.batch.config.RecordStatus;
 import com.example.batch.entity.stg.StagingSynchLog;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,7 +30,8 @@ import java.util.Map;
  * REQUIRES_NEW transaction so it is immediately visible to other nodes.
  */
 @ApplicationScoped
-public class StagingSynchLogRepository {
+@io.quarkus.hibernate.orm.PersistenceUnit("stgdb")
+public class StagingSynchLogRepository implements PanacheRepositoryBase<StagingSynchLog, Long> {
 
     @Inject
     @io.quarkus.hibernate.orm.PersistenceUnit("stgdb")
@@ -85,7 +87,7 @@ public class StagingSynchLogRepository {
         Log.infof("[%s] Claimed %d/%d records (PENDING→PROCESSING).", nodeId, updated, ids.size());
 
         // Step 3 — load full entities for the claimed IDs
-        return StagingSynchLog.list("id IN ?1 AND status = ?2 ORDER BY id ASC",
+        return list("id IN ?1 AND status = ?2 ORDER BY id ASC",
                 ids, RecordStatus.PROCESSING);
     }
 
@@ -179,7 +181,7 @@ public class StagingSynchLogRepository {
     // -----------------------------------------------------------------------
 
     public long countByStatus(RecordStatus status) {
-        return StagingSynchLog.count("status", status);
+        return count("status", status);
     }
 
     // -----------------------------------------------------------------------

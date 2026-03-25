@@ -1,6 +1,5 @@
 package com.example.batch.entity.main;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,11 +10,11 @@ import java.util.UUID;
 /**
  * Main DB entity for centres data.
  *
- * Lives exclusively in the "maindb" persistence unit.
+ * Lives exclusively in the default (main) persistence unit.
  */
 @Entity
 @Table(name = "centres")
-public class Centre extends PanacheEntityBase {
+public class Centre {
 
     @Id
     @NotNull

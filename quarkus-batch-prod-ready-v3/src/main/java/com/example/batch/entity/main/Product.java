@@ -1,21 +1,17 @@
 package com.example.batch.entity.main;
 
-import io.quarkus.hibernate.orm.PersistenceUnit;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Main DB entity — aggregated and validated result written by the batch processor.
  *
- * Aggregation key: product_name
+ * Aggregation key: table_name
  * Upsert semantics: if a row for the same key already exists it is updated;
  * otherwise a new row is inserted.
  *
- * Lives exclusively in the "maindb" persistence unit.
+ * Lives exclusively in the default (main) persistence unit.
  */
 @Entity
 @Table(
@@ -23,14 +19,14 @@ import java.util.Optional;
     uniqueConstraints = {
         @UniqueConstraint(
             name = "uq_agg_product",
-            columnNames = {"product_name"})
+            columnNames = {"table_name"})
     },
     indexes = {
-        @Index(name = "idx_agg_product", columnList = "product_name"),
+        @Index(name = "idx_agg_product", columnList = "table_name"),
         @Index(name = "idx_agg_batch",   columnList = "batch_id")
     }
 )
-public class Product extends PanacheEntityBase {
+public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "agg_result_seq")
@@ -46,8 +42,8 @@ public class Product extends PanacheEntityBase {
     // -----------------------------------------------------------------------
 
 
-    @Column(name = "product_name", nullable = false, length = 200)
-    public String productName;
+    @Column(name = "table_name", nullable = false, length = 200)
+    public String tableName;
 
     // -----------------------------------------------------------------------
     // Aggregated metrics
@@ -80,16 +76,5 @@ public class Product extends PanacheEntityBase {
     @PrePersist  public void onPersist() { createdAt = updatedAt = LocalDateTime.now(); }
     @PreUpdate   public void onUpdate()  { updatedAt = LocalDateTime.now(); }
 
-    // -----------------------------------------------------------------------
-    // Queries
-    // -----------------------------------------------------------------------
-
-    public static Optional<Product> findByKey(String productName) {
-        return find("productName = ?1", productName).firstResultOptional();
-    }
-
-    public static List<Product> findByBatchId(String batchId) {
-        return list("batchId", batchId);
-    }
 }
 

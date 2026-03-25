@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BatchProcessingService {
 
     @Inject BatchProperties              props;
-    @Inject StagingSynchLogRepository    stagingRepo;
+    @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository    stagingRepo;
     @Inject ProductRepository            productRepo;
     @Inject BatchExecutionLogRepository  logRepo;
     @Inject ChunkAggregator              aggregator;

@@ -20,7 +20,6 @@ public class DatabaseHealthCheck implements HealthCheck {
     EntityManager stgEm;
 
     @Inject
-    @io.quarkus.hibernate.orm.PersistenceUnit("maindb")
     EntityManager mainEm;
 
     @Override

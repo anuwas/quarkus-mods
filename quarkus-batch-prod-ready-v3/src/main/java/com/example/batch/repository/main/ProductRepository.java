@@ -1,6 +1,7 @@
 package com.example.batch.repository.main;
 
 import com.example.batch.entity.main.Product;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -13,14 +14,13 @@ import java.util.Optional;
  * Repository for Product operations on mainDB.
  *
  * Uses upsert semantics: if a row already exists for the aggregation key
- * (product_name) the metrics are merged rather
+ * (table_name) the metrics are merged rather
  * than duplicated.  This makes the batch idempotent — safe to retry.
  */
 @ApplicationScoped
-public class ProductRepository {
+public class ProductRepository implements PanacheRepositoryBase<Product, Long> {
 
     @Inject
-    @io.quarkus.hibernate.orm.PersistenceUnit("maindb")
     EntityManager em;
 
     /**
@@ -30,7 +30,7 @@ public class ProductRepository {
     @Transactional(Transactional.TxType.MANDATORY)
     public void upsertAll(List<Product> results) {
         for (Product result : results) {
-            findByKey(result.productName)
+            findByKey(result.tableName)
                 .ifPresentOrElse(
                     existing -> merge(existing, result),
                     () -> em.persist(result)
@@ -40,14 +40,17 @@ public class ProductRepository {
     }
 
     /**
-     * Find a Product by its product_name using the maindb EntityManager.
+     * Find a Product by its table_name.
      */
-    private Optional<Product> findByKey(String productName) {
-        return em.createQuery("SELECT p FROM Product p WHERE p.productName = :productName", Product.class)
-                .setParameter("productName", productName)
-                .setMaxResults(1)
-                .getResultStream()
-                .findFirst();
+    public Optional<Product> findByKey(String tableName) {
+        return find("tableName", tableName).firstResultOptional();
+    }
+
+    /**
+     * Find all Products by batch ID.
+     */
+    public List<Product> findByBatchId(String batchId) {
+        return list("batchId", batchId);
     }
 
     // -----------------------------------------------------------------------
