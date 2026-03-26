@@ -1,43 +1,3 @@
--- =====================================================================
--- STG seed data — 30 representative PENDING records for demo / testing
--- =====================================================================
-INSERT INTO public.staging_synch_log
-(id, table_name, table_reference, status, created_at, updated_at, retry_count, processed_at, node_id, notes, error_message)
-VALUES
-    (1, 'stg_centres', '1', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (2, 'stg_centres', '2', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (3, 'stg_centres', '3', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (4, 'stg_centres', '4', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (5, 'stg_centres', '5', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (6, 'stg_centres', '6', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (7, 'stg_centres', '7', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (8, 'stg_centres', '8', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (9, 'stg_centres', '9', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (10, 'stg_centres', '10', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (11, 'stg_centres', '11', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (12, 'stg_centres', '12', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (13, 'stg_centres', '13', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (14, 'stg_centres', '14', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (15, 'stg_centres', '15', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (16, 'stg_centres', '16', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (17, 'stg_centres', '17', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (18, 'stg_centres', '18', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (19, 'stg_centres', '19', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (20, 'stg_centres', '20', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (21, 'stg_centres', '21', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (22, 'stg_centres', '22', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (23, 'stg_centres', '23', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (24, 'stg_centres', '24', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (25, 'stg_centres', '25', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (26, 'stg_centres', '26', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (27, 'stg_centres', '27', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (28, 'stg_centres', '28', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (29, 'stg_centres', '29', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL),
-    (30, 'stg_centres', '30', 'PENDING',NOW(),NOW(),0,NULL,NULL,NULL,NULL);
-
--- =====================================================================
--- STG seed data — 30 stg_centres records corresponding to the above
--- =====================================================================
 INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, parent_centre_id, load_timestamp, centre_status, operational_name, centre_name) VALUES('01', 0, '1', '', now(), '', '', 'Oakridge Academy');
 INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, parent_centre_id, load_timestamp, centre_status, operational_name, centre_name) VALUES('02', 0, '2', '', now(), '', '', 'Westfield Institute');
 INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, parent_centre_id, load_timestamp, centre_status, operational_name, centre_name) VALUES('01', 0, '3', '', now(), '', '', 'Thornberry College');
@@ -68,4 +28,3 @@ INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, p
 INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, parent_centre_id, load_timestamp, centre_status, operational_name, centre_name) VALUES('02', 0, '28', '', now(), '', '', 'Glendale School');
 INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, parent_centre_id, load_timestamp, centre_status, operational_name, centre_name) VALUES('01', 0, '29', '', now(), '', '', 'Hawthorne College');
 INSERT INTO public.stg_centres (awarding_organisation_id, batch_id, centre_id, parent_centre_id, load_timestamp, centre_status, operational_name, centre_name) VALUES('02', 0, '30', '', now(), '', '', 'Fernwood Learning Centre');
-

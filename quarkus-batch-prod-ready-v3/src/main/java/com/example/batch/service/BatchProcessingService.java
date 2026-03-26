@@ -4,7 +4,7 @@ import com.example.batch.config.BatchProperties;
 import com.example.batch.dto.BatchResult;
 import com.example.batch.dto.ChunkResult;
 import com.example.batch.entity.stg.StagingSynchLog;
-import com.example.batch.repository.main.ProductRepository;
+import com.example.batch.repository.main.CentreRepository;
 import com.example.batch.repository.main.BatchExecutionLogRepository;
 import com.example.batch.repository.stg.StagingSynchLogRepository;
 import io.micrometer.core.instrument.Counter;
@@ -33,12 +33,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *    SELECT … FOR UPDATE SKIP LOCKED → UPDATE status=PROCESSING
  *    → other nodes skip these rows from this point forward
  *
- *  Phase 2 — PROCESS  (in-memory, no DB)
- *    ChunkAggregator.process() validates each record, aggregates valid ones,
+ *  Phase 2 — PROCESS  (in-memory + stgDB read)
+ *    ChunkAggregator.process() fetches StagingCentre records based on
+ *    table_reference, validates each record, maps to Centre entities,
  *    collects failed IDs with their error messages.
  *
  *  Phase 3 — COMMIT  (separate REQUIRES_NEW transaction per datasource)
- *    3a. ProductRepository.upsertAll() → writes to mainDB (REQUIRES_NEW)
+ *    3a. CentreRepository.upsertAll() → writes to mainDB (REQUIRES_NEW)
  *    3b. StagingSynchLogRepository.markCompleted() per success       (REQUIRES_NEW)
  *        StagingSynchLogRepository.markFailed()    per validation failure
  *    → Each datasource commits independently; avoids cross-datasource XA issues
@@ -59,7 +60,7 @@ public class BatchProcessingService {
 
     @Inject BatchProperties              props;
     @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository    stagingRepo;
-    @Inject ProductRepository            productRepo;
+    @Inject CentreRepository             centreRepo;
     @Inject BatchExecutionLogRepository  logRepo;
     @Inject ChunkAggregator              aggregator;
     @Inject MeterRegistry                meterRegistry;
@@ -164,7 +165,7 @@ public class BatchProcessingService {
     }
 
     /**
-     * Write aggregated results to mainDB and then update staging statuses.
+     * Write Centre entities to mainDB and then update staging statuses.
      *
      * Each datasource is written in its own REQUIRES_NEW transaction to avoid
      * enlisting two datasources in the same JTA transaction (which caused
@@ -177,7 +178,7 @@ public class BatchProcessingService {
      * idempotent, so a retry is safe.
      */
     protected void commitChunk(ChunkResult result) {
-        // 3a — write aggregated results to mainDB (own transaction)
+        // 3a — write Centre entities to mainDB (own transaction)
         commitToMainDb(result);
 
         // 3b — update staging statuses in stgDB (own transaction)
@@ -186,8 +187,8 @@ public class BatchProcessingService {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     protected void commitToMainDb(ChunkResult result) {
-        if (!result.aggregated().isEmpty()) {
-            productRepo.upsertAll(result.aggregated());
+        if (!result.centres().isEmpty()) {
+            centreRepo.upsertAll(result.centres());
         }
     }
 

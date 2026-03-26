@@ -4,7 +4,7 @@ import com.example.batch.config.BatchProperties;
 import com.example.batch.config.RecordStatus;
 import com.example.batch.dto.BatchResult;
 import com.example.batch.repository.main.BatchExecutionLogRepository;
-import com.example.batch.repository.main.ProductRepository;
+import com.example.batch.repository.main.CentreRepository;
 import com.example.batch.repository.stg.StagingSynchLogRepository;
 import com.example.batch.service.BatchProcessingService;
 import io.quarkus.logging.Log;
@@ -39,7 +39,7 @@ public class BatchResource {
 
     @Inject BatchProcessingService      batchService;
     @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository   stagingRepo;
-    @Inject ProductRepository           productRepo;
+    @Inject CentreRepository             centreRepo;
     @Inject BatchExecutionLogRepository logRepo;
     @Inject BatchProperties             props;
 
@@ -84,7 +84,7 @@ public class BatchResource {
         s.put("stg.processing", stagingRepo.countByStatus(RecordStatus.PROCESSING));
         s.put("stg.completed",  stagingRepo.countByStatus(RecordStatus.COMPLETED));
         s.put("stg.failed",     stagingRepo.countByStatus(RecordStatus.FAILED));
-        s.put("main.results",   productRepo.count());
+        s.put("main.centres",   centreRepo.count());
         s.put("main.execLogs",  logRepo.count());
         return Response.ok(s).build();
     }
@@ -112,15 +112,15 @@ public class BatchResource {
     }
 
     // -----------------------------------------------------------------------
-    // Aggregated results
+    // Centres (results)
     // -----------------------------------------------------------------------
 
     @GET
     @Path("/results")
-    @Operation(summary = "Aggregated results from mainDB")
+    @Operation(summary = "Centre records from mainDB")
     public Response results(
             @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(1000) int limit) {
-        return Response.ok(productRepo.listAll().stream().limit(limit).toList()).build();
+        return Response.ok(centreRepo.listAll().stream().limit(limit).toList()).build();
     }
 
     // -----------------------------------------------------------------------
