@@ -1,0 +1,34 @@
+-- =====================================================================
+-- STG seed data — 30 stg_student records for demo / testing
+-- =====================================================================
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 12, '1', '', now(), '', '', 'James Carter');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 7, '2', '', now(), '', '', 'Emily Watson');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 23, '3', '', now(), '', '', 'Oliver Bennett');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 5, '4', '', now(), '', '', 'Sophia Mitchell');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 18, '5', '', now(), '', '', 'Liam Henderson');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 31, '6', '', now(), '', '', 'Ava Richardson');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 9, '7', '', now(), '', '', 'Noah Chambers');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 14, '8', '', now(), '', '', 'Isabella Foster');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 27, '9', '', now(), '', '', 'Ethan Brooks');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 3, '10', '', now(), '', '', 'Mia Sullivan');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 21, '11', '', now(), '', '', 'Lucas Perry');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 16, '12', '', now(), '', '', 'Charlotte Morgan');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 8, '13', '', now(), '', '', 'Alexander Reed');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 29, '14', '', now(), '', '', 'Amelia Cooper');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 11, '15', '', now(), '', '', 'Benjamin Hayes');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 4, '16', '', now(), '', '', 'Harper Griffin');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 25, '17', '', now(), '', '', 'Daniel Murphy');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 19, '18', '', now(), '', '', 'Evelyn Howard');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 6, '19', '', now(), '', '', 'Henry Barnes');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 33, '20', '', now(), '', '', 'Ella Patterson');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 2, '21', '', now(), '', '', 'Sebastian Ward');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 15, '22', '', now(), '', '', 'Grace Simmons');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 22, '23', '', now(), '', '', 'Jack Russell');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 10, '24', '', now(), '', '', 'Chloe Fisher');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 28, '25', '', now(), '', '', 'William Turner');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 1, '26', '', now(), '', '', 'Lily Edwards');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 17, '27', '', now(), '', '', 'Owen Collins');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 30, '28', '', now(), '', '', 'Zoe Stewart');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 13, '29', '', now(), '', '', 'Samuel Morris');
+INSERT INTO public.stg_student (awarding_organisation_id, batch_id, student_id, parent_centre_id, load_timestamp, student_status, operational_name, student_name) VALUES('01', 20, '30', '', now(), '', '', 'Hannah Price');
+

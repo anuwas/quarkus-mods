@@ -4,14 +4,12 @@ import com.example.batch.config.BatchProperties;
 import com.example.batch.dto.BatchResult;
 import com.example.batch.dto.ChunkResult;
 import com.example.batch.entity.stg.StagingSynchLog;
-import com.example.batch.repository.main.CentreRepository;
 import com.example.batch.repository.main.BatchExecutionLogRepository;
 import com.example.batch.repository.stg.StagingSynchLogRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -22,54 +20,75 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Core batch processing service.
+ * Abstract base class for entity-specific batch processing services.
  *
- * Processes exactly one chunk per call — the scheduler invokes this once per
- * scheduled tick, ensuring each chunk is its own atomic unit.
+ * <p>Encapsulates the common four-phase chunk lifecycle:
+ * <ol>
+ *   <li><b>CLAIM</b> — lock PENDING rows via {@code SELECT … FOR UPDATE SKIP LOCKED}</li>
+ *   <li><b>PROCESS</b> — validate and map staging records (delegated to subclass)</li>
+ *   <li><b>COMMIT</b> — write entities to mainDB and update staging statuses</li>
+ *   <li><b>AUDIT LOG</b> — record execution metrics</li>
+ * </ol>
  *
- * Per-chunk lifecycle:
- * ─────────────────────────────────────────────────────────────────────
- *  Phase 1 — CLAIM  (REQUIRES_NEW transaction, committed immediately)
- *    SELECT … FOR UPDATE SKIP LOCKED → UPDATE status=PROCESSING
- *    → other nodes skip these rows from this point forward
+ * <p>Subclasses must implement:
+ * <ul>
+ *   <li>{@link #entityName()} — human-readable name for logging and metrics</li>
+ *   <li>{@link #tableName()} — the staging table name to filter on (e.g. "stg_centres")</li>
+ *   <li>{@link #processRecords(List, String, String)} — validation and mapping logic</li>
+ *   <li>{@link #commitToMainDb(ChunkResult)} — upsert entities to mainDB</li>
+ * </ul>
  *
- *  Phase 2 — PROCESS  (in-memory + stgDB read)
- *    ChunkAggregator.process() fetches StagingCentre records based on
- *    table_reference, validates each record, maps to Centre entities,
- *    collects failed IDs with their error messages.
- *
- *  Phase 3 — COMMIT  (separate REQUIRES_NEW transaction per datasource)
- *    3a. CentreRepository.upsertAll() → writes to mainDB (REQUIRES_NEW)
- *    3b. StagingSynchLogRepository.markCompleted() per success       (REQUIRES_NEW)
- *        StagingSynchLogRepository.markFailed()    per validation failure
- *    → Each datasource commits independently; avoids cross-datasource XA issues
- *
- *  Phase 4 — AUDIT LOG  (REQUIRES_NEW, always commits)
- *    BatchExecutionLogRepository.completeLog() records final metrics.
- *
- * On any unrecoverable exception in Phase 3 the transaction rolls back and
- * Phase 4 bulk-marks all claimed IDs as FAILED in a new transaction.
- * ─────────────────────────────────────────────────────────────────────
- *
- * Multi-node safety: enforced by SELECT FOR UPDATE SKIP LOCKED in Phase 1.
- * Concurrent execution guard: AtomicBoolean prevents the same node from
- * starting a new chunk while the previous one is still running.
+ * <p>Multi-node safety is enforced by {@code SELECT FOR UPDATE SKIP LOCKED} in Phase 1.
+ * A per-instance {@link AtomicBoolean} guard prevents concurrent chunk execution
+ * on the same JVM for the same entity type.
  */
-@ApplicationScoped
-public class BatchProcessingService {
+public abstract class BatchProcessingService {
 
     @Inject BatchProperties              props;
-    @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository    stagingRepo;
-    @Inject CentreRepository             centreRepo;
+    @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository stagingRepo;
     @Inject BatchExecutionLogRepository  logRepo;
-    @Inject ChunkAggregator              aggregator;
     @Inject MeterRegistry                meterRegistry;
 
     /** Node identifier — hostname + PID, set once on first use. */
     private volatile String nodeId;
 
-    /** Prevents concurrent chunk execution on the same JVM instance. */
+    /** Prevents concurrent chunk execution on the same JVM instance for this entity. */
     private final AtomicBoolean executing = new AtomicBoolean(false);
+
+    // -----------------------------------------------------------------------
+    // Template methods — subclasses must implement
+    // -----------------------------------------------------------------------
+
+    /**
+     * Human-readable entity name used in batch IDs, log messages, and metric names.
+     * Examples: "CENTRE", "STUDENT".
+     */
+    protected abstract String entityName();
+
+    /**
+     * The staging table name used to filter {@code staging_synch_log.table_name}
+     * when claiming a chunk (e.g. "stg_centres", "stg_student").
+     */
+    protected abstract String tableName();
+
+    /**
+     * Validate and transform the claimed staging records into a {@link ChunkResult}.
+     *
+     * @param records  the claimed PROCESSING records from staging_synch_log
+     * @param batchId  current batch run identifier (for logging)
+     * @param nodeId   current node identifier
+     * @return a ChunkResult containing entities, success IDs, and failure IDs
+     */
+    protected abstract ChunkResult processRecords(List<StagingSynchLog> records,
+                                                  String batchId, String nodeId);
+
+    /**
+     * Write the processed entities to mainDB.
+     * Must be annotated {@code @Transactional(REQUIRES_NEW)} in the concrete subclass.
+     *
+     * @param result the chunk result containing entities to persist
+     */
+    protected abstract void commitToMainDb(ChunkResult result);
 
     // -----------------------------------------------------------------------
     // Public entry point
@@ -82,12 +101,14 @@ public class BatchProcessingService {
      */
     public BatchResult processNextChunk() {
         if (!executing.compareAndSet(false, true)) {
-            Log.warnf("[%s] Skipping — previous chunk is still executing.", getNodeId());
+            Log.warnf("[%s][%s] Skipping — previous chunk is still executing.",
+                    getNodeId(), entityName());
             return BatchResult.skipped(getNodeId());
         }
 
         long startMs = System.currentTimeMillis();
-        String batchId = "BATCH-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+        String batchId = entityName() + "-" +
+                UUID.randomUUID().toString().substring(0, 12).toUpperCase();
 
         try {
             return doProcessChunk(batchId, startMs);
@@ -101,30 +122,32 @@ public class BatchProcessingService {
     // -----------------------------------------------------------------------
 
     private BatchResult doProcessChunk(String batchId, long startMs) {
-        String node = getNodeId();
-        int chunkSize = props.chunkSize();
+        String node      = getNodeId();
+        int    chunkSize = props.chunkSize();
 
         // Persist audit log entry immediately (REQUIRES_NEW — survives rollback)
         logRepo.createLog(batchId, node, chunkSize);
 
         // ── Phase 1: CLAIM ────────────────────────────────────────────────
-        List<StagingSynchLog> claimed = stagingRepo.claimChunk(chunkSize, node);
+        List<StagingSynchLog> claimed = stagingRepo.claimChunkByTable(chunkSize, node, tableName());
 
         if (claimed.isEmpty()) {
-            Log.infof("[%s][%s] No PENDING records available — skipping.", node, batchId);
+            Log.infof("[%s][%s] No PENDING %s records available — skipping.",
+                    node, batchId, entityName());
             logRepo.completeLog(batchId, "EMPTY", 0, 0, 0,
                     System.currentTimeMillis() - startMs, null);
-            recordMetric("batch.run.empty");
+            recordMetric("batch." + entityName().toLowerCase() + ".run.empty");
             return BatchResult.empty(batchId, node);
         }
 
-        Log.infof("[%s][%s] Processing chunk of %d records.", node, batchId, claimed.size());
+        Log.infof("[%s][%s] Processing chunk of %d %s records.",
+                node, batchId, claimed.size(), entityName());
 
         List<Long> allClaimedIds = claimed.stream().map(r -> r.id).toList();
 
         try {
             // ── Phase 2: PROCESS (in-memory) ──────────────────────────────
-            ChunkResult result =  aggregator.process(claimed, batchId, node);
+            ChunkResult result = processRecords(claimed, batchId, node);
 
             // ── Phase 3: COMMIT ───────────────────────────────────────────
             commitChunk(result);
@@ -153,43 +176,35 @@ public class BatchProcessingService {
             Log.errorf(e, "[%s][%s] Chunk transaction failed — marking %d records as FAILED.",
                     node, batchId, allClaimedIds.size());
 
-            stagingRepo.bulkMarkFailed(allClaimedIds, "Chunk transaction failed: " + e.getMessage());
+            stagingRepo.bulkMarkFailed(allClaimedIds,
+                    "Chunk transaction failed: " + e.getMessage());
 
             long duration = System.currentTimeMillis() - startMs;
             logRepo.completeLog(batchId, "FAILED",
                     claimed.size(), 0, allClaimedIds.size(), duration, e.getMessage());
 
-            recordMetric("batch.run.failed");
+            recordMetric("batch." + entityName().toLowerCase() + ".run.failed");
             return BatchResult.failed(batchId, node, allClaimedIds.size(), e.getMessage());
         }
     }
 
     /**
-     * Write Centre entities to mainDB and then update staging statuses.
+     * Commit the chunk: write entities to mainDB then update staging statuses.
      *
-     * Each datasource is written in its own REQUIRES_NEW transaction to avoid
-     * enlisting two datasources in the same JTA transaction (which caused
-     * "Enlisted connection used without active transaction" via Agroal's
-     * LocalXAResource).
+     * <p>Each datasource is written in its own REQUIRES_NEW transaction to avoid
+     * enlisting two datasources in the same JTA transaction.
      *
-     * Ordering: mainDB first, then stgDB.  If the stgDB update fails after
+     * <p>Ordering: mainDB first, then stgDB.  If the stgDB update fails after
      * mainDB has committed, the staging records remain in PROCESSING and can
      * be recovered via the admin reset endpoint.  The mainDB upsert is
      * idempotent, so a retry is safe.
      */
     protected void commitChunk(ChunkResult result) {
-        // 3a — write Centre entities to mainDB (own transaction)
+        // 3a — write entities to mainDB (own transaction — delegated to subclass)
         commitToMainDb(result);
 
         // 3b — update staging statuses in stgDB (own transaction)
         commitToStgDb(result);
-    }
-
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
-    protected void commitToMainDb(ChunkResult result) {
-        if (!result.centres().isEmpty()) {
-            centreRepo.upsertAll(result.centres());
-        }
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -203,11 +218,12 @@ public class BatchProcessingService {
     // -----------------------------------------------------------------------
 
     private void recordChunkMetrics(long ok, long failed, long durationMs) {
-        Counter.builder("batch.records.ok")
+        String prefix = "batch." + entityName().toLowerCase();
+        Counter.builder(prefix + ".records.ok")
                 .register(meterRegistry).increment(ok);
-        Counter.builder("batch.records.failed")
+        Counter.builder(prefix + ".records.failed")
                 .register(meterRegistry).increment(failed);
-        Timer.builder("batch.chunk.duration")
+        Timer.builder(prefix + ".chunk.duration")
                 .register(meterRegistry)
                 .record(durationMs, TimeUnit.MILLISECONDS);
     }
@@ -231,5 +247,4 @@ public class BatchProcessingService {
         }
         return nodeId;
     }
-
 }

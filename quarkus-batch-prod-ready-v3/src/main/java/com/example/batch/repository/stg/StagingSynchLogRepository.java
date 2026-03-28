@@ -59,16 +59,40 @@ public class StagingSynchLogRepository implements PanacheRepositoryBase<StagingS
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public List<StagingSynchLog> claimChunk(int chunkSize, String nodeId) {
+        return claimChunkByTable(chunkSize, nodeId, null);
+    }
+
+    /**
+     * Atomically claim up to {@code chunkSize} PENDING records for a specific
+     * {@code tableName} (e.g. "stg_centres" or "stg_student").
+     *
+     * <p>If {@code tableName} is {@code null}, all PENDING records are eligible
+     * (backwards-compatible with the original claimChunk behaviour).
+     *
+     * @param chunkSize  maximum records to claim
+     * @param nodeId     identifier of the calling node (hostname + PID)
+     * @param tableName  the staging table to filter on, or null for all tables
+     * @return list of claimed StagingSynchLog entities (may be empty if nothing pending)
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public List<StagingSynchLog> claimChunkByTable(int chunkSize, String nodeId, String tableName) {
         // Step 1 — find candidate IDs using keyset + FOR UPDATE SKIP LOCKED
+        String sql = "SELECT id FROM staging_synch_log WHERE status = 'PENDING' " +
+                     (tableName != null ? "AND table_name = :tableName " : "") +
+                     "ORDER BY id ASC LIMIT :size FOR UPDATE SKIP LOCKED";
+
+        var query = em.createNativeQuery(sql)
+            .setParameter("size", chunkSize);
+
+        if (tableName != null) {
+            query.setParameter("tableName", tableName);
+        }
+
         @SuppressWarnings("unchecked")
-        List<Long> ids = em.createNativeQuery(
-                "SELECT id FROM staging_synch_log WHERE status = 'PENDING' " +
-                "ORDER BY id ASC LIMIT :size FOR UPDATE SKIP LOCKED")
-            .setParameter("size", chunkSize)
-            .getResultList();
+        List<Long> ids = query.getResultList();
 
         if (ids.isEmpty()) {
-            Log.debugf("[%s] claimChunk: no PENDING records available.", nodeId);
+            Log.debugf("[%s] claimChunkByTable(%s): no PENDING records available.", nodeId, tableName);
             return List.of();
         }
 
@@ -84,7 +108,8 @@ public class StagingSynchLogRepository implements PanacheRepositoryBase<StagingS
             .setParameter("pending",    RecordStatus.PENDING)
             .executeUpdate();
 
-        Log.infof("[%s] Claimed %d/%d records (PENDING→PROCESSING).", nodeId, updated, ids.size());
+        Log.infof("[%s] Claimed %d/%d records for table '%s' (PENDING→PROCESSING).",
+                nodeId, updated, ids.size(), tableName != null ? tableName : "ALL");
 
         // Step 3 — load full entities for the claimed IDs
         return list("id IN ?1 AND status = ?2 ORDER BY id ASC",

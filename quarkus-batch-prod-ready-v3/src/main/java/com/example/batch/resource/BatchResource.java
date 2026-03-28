@@ -5,8 +5,10 @@ import com.example.batch.config.RecordStatus;
 import com.example.batch.dto.BatchResult;
 import com.example.batch.repository.main.BatchExecutionLogRepository;
 import com.example.batch.repository.main.CentreRepository;
+import com.example.batch.repository.main.StudentRepository;
 import com.example.batch.repository.stg.StagingSynchLogRepository;
-import com.example.batch.service.BatchProcessingService;
+import com.example.batch.service.CentreBatchProcessingService;
+import com.example.batch.service.StudentBatchProcessingService;
 import io.quarkus.logging.Log;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.Max;
@@ -24,12 +26,14 @@ import java.util.Map;
  * Production REST API for the batch processor.
  *
  * Endpoints:
- *   POST /batch/trigger           — manually trigger one chunk
- *   GET  /batch/status            — live counts per status in stgDB
- *   GET  /batch/executions        — recent batch execution logs
- *   GET  /batch/executions/{id}   — single execution detail
- *   GET  /batch/results           — aggregated results from mainDB
- *   POST /batch/admin/reset       — reset orphaned PROCESSING rows to PENDING
+ *   POST /batch/trigger/centres      — trigger one chunk of centre records only
+ *   POST /batch/trigger/students     — trigger one chunk of student records only
+ *   GET  /batch/status               — live counts per status in stgDB
+ *   GET  /batch/executions           — recent batch execution logs
+ *   GET  /batch/executions/{id}      — single execution detail
+ *   GET  /batch/results/centres      — centre records from mainDB
+ *   GET  /batch/results/students     — student records from mainDB
+ *   POST /batch/admin/reset          — reset orphaned PROCESSING rows to PENDING
  */
 @Path("/batch")
 @Produces(MediaType.APPLICATION_JSON)
@@ -37,31 +41,58 @@ import java.util.Map;
 @Tag(name = "Batch Processor", description = "Trigger, monitor, and manage the batch pipeline")
 public class BatchResource {
 
-    @Inject BatchProcessingService      batchService;
-    @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository   stagingRepo;
-    @Inject CentreRepository             centreRepo;
-    @Inject BatchExecutionLogRepository logRepo;
-    @Inject BatchProperties             props;
+    @Inject CentreBatchProcessingService  centreService;
+    @Inject StudentBatchProcessingService studentService;
+    @Inject @io.quarkus.hibernate.orm.PersistenceUnit("stgdb") StagingSynchLogRepository stagingRepo;
+    @Inject CentreRepository              centreRepo;
+    @Inject StudentRepository             studentRepo;
+    @Inject BatchExecutionLogRepository   logRepo;
+    @Inject BatchProperties               props;
+
 
     // -----------------------------------------------------------------------
-    // Trigger
+    // Trigger — centres only
     // -----------------------------------------------------------------------
 
     @POST
-    @Path("/trigger")
+    @Path("/trigger/centres")
     @Operation(
-        summary     = "Trigger one chunk",
-        description = "Processes the next available chunk of PENDING records. " +
+        summary     = "Trigger one chunk of centre records",
+        description = "Processes the next available chunk of PENDING centre records only. " +
                       "Idempotent — safe to call even if no records are pending."
     )
-    public Response trigger() {
-        Log.infof("Manual batch trigger received.");
+    public Response triggerCentres() {
+        Log.infof("Manual batch trigger received (centres).");
         try {
-            BatchResult result = batchService.processNextChunk();
+            BatchResult result = centreService.processNextChunk();
             return Response.ok(resultToMap(result)).build();
         } catch (Exception e) {
-            Log.errorf(e, "Manual trigger failed: %s", e.getMessage());
-            return Response.serverError() .entity(Map.of("error", e.getMessage())) .build();
+            Log.errorf(e, "Manual centre trigger failed: %s", e.getMessage());
+            return Response.serverError()
+                    .entity(Map.of("error", e.getMessage())).build();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Trigger — students only
+    // -----------------------------------------------------------------------
+
+    @POST
+    @Path("/trigger/students")
+    @Operation(
+        summary     = "Trigger one chunk of student records",
+        description = "Processes the next available chunk of PENDING student records only. " +
+                      "Idempotent — safe to call even if no records are pending."
+    )
+    public Response triggerStudents() {
+        Log.infof("Manual batch trigger received (students).");
+        try {
+            BatchResult result = studentService.processNextChunk();
+            return Response.ok(resultToMap(result)).build();
+        } catch (Exception e) {
+            Log.errorf(e, "Manual student trigger failed: %s", e.getMessage());
+            return Response.serverError()
+                    .entity(Map.of("error", e.getMessage())).build();
         }
     }
 
@@ -74,17 +105,20 @@ public class BatchResource {
     @Operation(summary = "Live stgDB status counts")
     public Response status() {
         Map<String, Object> s = new LinkedHashMap<>();
-        s.put("node",         batchService.getNodeId());
+        s.put("node",         centreService.getNodeId());
         s.put("app",          "quarkus-batch-prod");
         s.put("time",         java.time.LocalDateTime.now().toString());
-        s.put("config.chunkSize",  props.chunkSize());
-        s.put("config.cron",       props.schedule().cron());
-        s.put("config.enabled",    props.schedule().enabled());
+        s.put("config.chunkSize",              props.chunkSize());
+        s.put("config.centre.cron",             props.schedule().centre().cron());
+        s.put("config.centre.enabled",          props.schedule().centre().enabled());
+        s.put("config.student.cron",            props.schedule().student().cron());
+        s.put("config.student.enabled",         props.schedule().student().enabled());
         s.put("stg.pending",    stagingRepo.countByStatus(RecordStatus.PENDING));
         s.put("stg.processing", stagingRepo.countByStatus(RecordStatus.PROCESSING));
         s.put("stg.completed",  stagingRepo.countByStatus(RecordStatus.COMPLETED));
         s.put("stg.failed",     stagingRepo.countByStatus(RecordStatus.FAILED));
         s.put("main.centres",   centreRepo.count());
+        s.put("main.students",  studentRepo.count());
         s.put("main.execLogs",  logRepo.count());
         return Response.ok(s).build();
     }
@@ -112,15 +146,23 @@ public class BatchResource {
     }
 
     // -----------------------------------------------------------------------
-    // Centres (results)
+    // Results
     // -----------------------------------------------------------------------
 
     @GET
-    @Path("/results")
+    @Path("/results/centres")
     @Operation(summary = "Centre records from mainDB")
-    public Response results(
+    public Response centreResults(
             @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(1000) int limit) {
         return Response.ok(centreRepo.listAll().stream().limit(limit).toList()).build();
+    }
+
+    @GET
+    @Path("/results/students")
+    @Operation(summary = "Student records from mainDB")
+    public Response studentResults(
+            @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(1000) int limit) {
+        return Response.ok(studentRepo.listAll().stream().limit(limit).toList()).build();
     }
 
     // -----------------------------------------------------------------------

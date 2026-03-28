@@ -58,9 +58,11 @@ services:
       MAIN_DB_URL:            jdbc:postgresql://maindb:5432/maindb
       MAIN_DB_USER:           main_user
       MAIN_DB_PASSWORD:       main_pass
-      BATCH_CHUNK_SIZE:       "500"
-      BATCH_CRON:             "0/30 * * * * ?"
-      BATCH_SCHEDULE_ENABLED: "true"
+      BATCH_CHUNK_SIZE:                "500"
+      BATCH_CENTRE_CRON:               "0/30 * * * * ?"
+      BATCH_CENTRE_SCHEDULE_ENABLED:   "true"
+      BATCH_STUDENT_CRON:              "0/30 * * * * ?"
+      BATCH_STUDENT_SCHEDULE_ENABLED:  "true"
     ports:
       - "8080:8080"
     healthcheck:

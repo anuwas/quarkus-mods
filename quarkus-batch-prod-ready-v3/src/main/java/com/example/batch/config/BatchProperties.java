@@ -29,5 +29,25 @@ public interface BatchProperties {
 
         @WithDefault("true")
         boolean enabled();
+
+        CentreSchedule centre();
+
+        StudentSchedule student();
+    }
+
+    interface CentreSchedule {
+        @WithDefault("0/30 * * * * ?")
+        String cron();
+
+        @WithDefault("true")
+        boolean enabled();
+    }
+
+    interface StudentSchedule {
+        @WithDefault("0/30 * * * * ?")
+        String cron();
+
+        @WithDefault("true")
+        boolean enabled();
     }
 }
