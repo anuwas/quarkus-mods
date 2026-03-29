@@ -107,8 +107,7 @@ public abstract class BatchProcessingService {
         }
 
         long startMs = System.currentTimeMillis();
-        String batchId = entityName() + "-" +
-                UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+        String batchId = entityName() + "-" +UUID.randomUUID().toString().substring(0, 12).toUpperCase();
 
         try {
             return doProcessChunk(batchId, startMs);
@@ -239,8 +238,7 @@ public abstract class BatchProcessingService {
     public String getNodeId() {
         if (nodeId == null) {
             try {
-                nodeId = InetAddress.getLocalHost().getHostName() + "-" +
-                         ProcessHandle.current().pid();
+                nodeId = InetAddress.getLocalHost().getHostName() + "-" + ProcessHandle.current().pid();
             } catch (Exception e) {
                 nodeId = "node-" + UUID.randomUUID().toString().substring(0, 8);
             }
