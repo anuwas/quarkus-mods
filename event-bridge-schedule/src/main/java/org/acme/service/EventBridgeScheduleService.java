@@ -16,20 +16,21 @@ public class EventBridgeScheduleService {
     @Inject
     SchedulerClient schedulerClient;
 
-    @ConfigProperty(name = "app.scheduler.api-destination-arn")
-    String apiDestinationArn;
+    @ConfigProperty(name = "app.scheduler.event-bus-arn")
+    String eventBusArn;
 
     @ConfigProperty(name = "app.scheduler.role-arn")
     String roleArn;
 
     /**
-     * Creates an EventBridge Scheduler schedule that will invoke an API Destination
-     * at the specified schedule time.
+     * Creates an EventBridge Scheduler schedule that will send an event to the
+     * default EventBridge event bus at the specified time.
      * <p>
-     * EventBridge Scheduler natively supports API Destination ARNs as target ARNs.
-     * The API Destination ARN is passed directly in the target configuration.
-     * The role ARN must have permission to invoke the API Destination
-     * (events:InvokeApiDestination).
+     * An EventBridge Rule ("scheduler-to-api-destination") on the default bus
+     * matches events with source "custom.scheduler" and detail-type "ScheduledEvent",
+     * and routes them to the API Destination which invokes the HTTP endpoint.
+     * <p>
+     * Architecture: Scheduler → Event Bus → Rule → API Destination → HTTP endpoint
      *
      * @param request the request containing schedule name and time
      * @return response with schedule details
@@ -40,7 +41,7 @@ public class EventBridgeScheduleService {
         // Build the schedule expression: "at(yyyy-MM-ddTHH:mm:ss)" for one-time schedule
         String scheduleExpression = "at(" + request.getScheduleTime() + ")";
 
-        // Build the payload that will be sent to the API Destination endpoint
+        // Build the payload that will be sent as the event detail
         String targetInput = String.format(
                 "{\"scheduleName\": \"%s\", \"scheduledTime\": \"%s\"}",
                 request.getScheduleName(),
@@ -48,6 +49,9 @@ public class EventBridgeScheduleService {
         );
 
         try {
+            // Target the default EventBridge event bus.
+            // EventBridgeParameters sets the Source and DetailType for the event,
+            // which the EventBridge Rule uses to match and route to the API Destination.
             CreateScheduleResponse response = schedulerClient.createSchedule(CreateScheduleRequest.builder()
                     .name(request.getScheduleName())
                     .scheduleExpression(scheduleExpression)
@@ -56,9 +60,13 @@ public class EventBridgeScheduleService {
                             .mode(FlexibleTimeWindowMode.OFF)
                             .build())
                     .target(Target.builder()
-                            .arn(apiDestinationArn)
+                            .arn(eventBusArn)
                             .roleArn(roleArn)
                             .input(targetInput)
+                            .eventBridgeParameters(EventBridgeParameters.builder()
+                                    .detailType("ScheduledEvent")
+                                    .source("custom.scheduler")
+                                    .build())
                             .retryPolicy(RetryPolicy.builder()
                                     .maximumRetryAttempts(2)
                                     .maximumEventAgeInSeconds(3600)
